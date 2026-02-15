@@ -23,6 +23,7 @@ export default function Home() {
   const [showAttach, setShowAttach] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+  const [creatingSession, setCreatingSession] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -49,15 +50,35 @@ export default function Home() {
     }
   };
 
+  // Ensure there is a session (create lazily when user interacts)
+  const ensureSession = async () => {
+    if (sessionId) return sessionId;
+    setCreatingSession(true);
+    try {
+      const s = await dialogueApi.createSession(userId, 'New Conflict Session');
+      setSessionId(s.session_id);
+      await loadChats();
+      return s.session_id;
+    } catch (err) {
+      console.error('Failed to create session on demand', err);
+      return null;
+    } finally {
+      setCreatingSession(false);
+    }
+  };
+
   const handleAddTurn = async (speaker: string, text: string) => {
-    if (!sessionId) return;
+    if (!text.trim()) return;
+
+    const sid = sessionId ?? (await ensureSession());
+    if (!sid) return;
 
     try {
-      const turn = await dialogueApi.addTurn(sessionId, speaker, text);
-      setTurns([...turns, turn]);
+      const turn = await dialogueApi.addTurn(sid, speaker, text);
+      setTurns((prev) => [...prev, turn]);
       
       // Re-analyze
-      const analysisResult = await analysisApi.analyzeSession(sessionId);
+      const analysisResult = await analysisApi.analyzeSession(sid);
       setAnalysis(analysisResult);
     } catch (error) {
       console.error('Failed to add turn:', error);
@@ -66,11 +87,22 @@ export default function Home() {
 
   const handleScreenshotUpload = async (uploadedSessionId: number) => {
     setSessionId(uploadedSessionId);
-    const turnsData = await dialogueApi.getTurns(uploadedSessionId);
-    setTurns(turnsData.turns);
-    
-    const analysisResult = await analysisApi.analyzeSession(uploadedSessionId);
-    setAnalysis(analysisResult);
+    try {
+      const turnsData = await dialogueApi.getTurns(uploadedSessionId);
+      setTurns(turnsData.turns || []);
+
+      if (!turnsData.turns || turnsData.turns.length === 0) {
+        // No turns to analyze yet — avoid calling analyze endpoint which returns 400
+        setAnalysis(null);
+        return;
+      }
+
+      const analysisResult = await analysisApi.analyzeSession(uploadedSessionId);
+      setAnalysis(analysisResult);
+    } catch (err) {
+      console.error('Screenshot upload handling failed:', err);
+      setAnalysis(null);
+    }
   };
 
   const createNewChat = async () => {
@@ -94,10 +126,11 @@ export default function Home() {
   };
 
   const handleAnalyzeNow = async () => {
-    if (!sessionId) return;
     setAnalyzing(true);
     try {
-      const a = await analysisApi.analyzeSession(sessionId);
+      const sid = sessionId ?? (await ensureSession());
+      if (!sid) throw new Error('Unable to create session for analysis');
+      const a = await analysisApi.analyzeSession(sid);
       setAnalysis(a);
     } catch (err) {
       console.error('Analyze failed', err);
@@ -173,14 +206,25 @@ export default function Home() {
           </div>
 
           <div className="chats-list">
-            {chats.length === 0 && <p className="text-center text-gray-400 py-4">Нет чатов</p>}
-            {chats.map((c: any) => (
+            {(!Array.isArray(chats) || chats.length === 0) && <p className="text-center text-gray-400 py-4">Нет чатов</p>}
+            {Array.isArray(chats) && chats.map((c: any) => (
               <div key={c.id} className={`chat-item ${sessionId === c.id ? 'active' : ''}`} onClick={async () => {
                 setSessionId(c.id);
-                const turnsData = await dialogueApi.getTurns(c.id);
-                setTurns(turnsData.turns || []);
-                const a = await analysisApi.analyzeSession(c.id);
-                setAnalysis(a);
+                try {
+                  const turnsData = await dialogueApi.getTurns(c.id);
+                  setTurns(turnsData.turns || []);
+
+                  if (!turnsData.turns || turnsData.turns.length === 0) {
+                    setAnalysis(null);
+                    return;
+                  }
+
+                  const a = await analysisApi.analyzeSession(c.id);
+                  setAnalysis(a);
+                } catch (err) {
+                  console.warn('Failed to load session turns or analysis:', err);
+                  setAnalysis(null);
+                }
               }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -285,14 +329,14 @@ export default function Home() {
                 <div style={{ flex: 1 }}>
                   <ScreenshotUpload userId={userId} onUploadSuccess={handleScreenshotUpload} />
                   <div className="mt-4">
-                    <DialogueInput sessionId={sessionId} onAddTurn={handleAddTurn} />
+                    <DialogueInput sessionId={sessionId} creatingSession={creatingSession} onAddTurn={handleAddTurn} />
                   </div>
                 </div>
 
                 <button id="mobileAnalyzeBtn" className="mobile-analyze-btn" onClick={handleAnalyzeNow}>→</button>
               </div>
 
-              <button id="analyzeBtn" className="analyze-btn" onClick={handleAnalyzeNow} disabled={!sessionId || analyzing}>
+            <button id="analyzeBtn" className="analyze-btn" onClick={handleAnalyzeNow} disabled={analyzing || !sessionId || turns.length === 0}>
                 <span className="btn-text">Анализировать</span>
                 {analyzing ? (
                   <span className="loader">

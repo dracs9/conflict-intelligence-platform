@@ -120,13 +120,59 @@ class MLService:
                 "MLService not initialized — call initialize() before using analyze_emotions()"
             )
         emotions = self.emotion_analyzer(text)
+        logger.debug("Raw emotion analyzer output: %s", emotions)
+
         if not emotions:
             return {"emotions": {}, "aggression_score": 0.0, "dominant_emotion": "neutral"}
-        # Map emotions to aggression indicators
-        emotion_dict = {e["label"]: float(e["score"]) for e in emotions}
+
+        # Normalize different return shapes from transformers pipeline
+        # Possible shapes:
+        # - list[dict] -> [{"label": "anger", "score": 0.9}, ...]
+        # - dict(label=..., score=...) -> single-label
+        # - dict mapping labels to scores -> {"anger": 0.9, "joy": 0.1}
+        emotion_dict = {}
+
+        # Case: list of dicts with 'label' and 'score'
+        if isinstance(emotions, list) and all(
+            isinstance(e, dict) and "label" in e for e in emotions
+        ):
+            for e in emotions:
+                try:
+                    emotion_dict[str(e["label"])] = float(e.get("score", 0.0))
+                except Exception:
+                    logger.debug("Skipping malformed emotion entry: %s", e)
+
+        # Case: single dict with 'label' and 'score'
+        elif isinstance(emotions, dict) and "label" in emotions and "score" in emotions:
+            emotion_dict[str(emotions["label"])] = float(emotions["score"])
+
+        # Case: dict mapping labels -> scores
+        elif isinstance(emotions, dict):
+            for k, v in emotions.items():
+                try:
+                    emotion_dict[str(k)] = float(v)
+                except Exception:
+                    logger.debug("Skipping malformed emotion mapping entry: %s=%s", k, v)
+
+        else:
+            # Unknown shape — try best-effort coercion
+            try:
+                for item in list(emotions):
+                    if isinstance(item, (tuple, list)) and len(item) == 2:
+                        emotion_dict[str(item[0])] = float(item[1])
+            except Exception:
+                logger.exception("Unexpected emotions output type: %s", type(emotions))
+
+        if not emotion_dict:
+            # fallback
+            return {"emotions": {}, "aggression_score": 0.0, "dominant_emotion": "neutral"}
+
         # Aggression score (anger-based)
-        aggression_score = float(emotion_dict.get("anger", 0.0))
-        dominant = max(emotions, key=lambda x: x["score"])["label"]
+        aggression_score = float(emotion_dict.get("anger", emotion_dict.get("Anger", 0.0)))
+
+        # Find dominant emotion
+        dominant = max(emotion_dict.items(), key=lambda kv: kv[1])[0]
+
         return {
             "emotions": emotion_dict,
             "aggression_score": aggression_score,

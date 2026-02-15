@@ -36,6 +36,17 @@ api.interceptors.response.use(
   }
 );
 
+// When sending FormData, ensure axios/browser set the proper multipart boundary
+api.interceptors.request.use((config) => {
+  if (config && config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    }
+  }
+  return config;
+}, (err) => Promise.reject(err));
+
 export const dialogueApi = {
   createSession: async (userId: string, sessionName?: string) => {
     const response = await api.post('/api/dialogue/session/create', {
@@ -63,9 +74,21 @@ export const dialogueApi = {
     return response.data;
   },
 
-  getUserSessions: async (userId: string) => {
+  getUserSessions: async (userId: string): Promise<any[]> => {
     const response = await api.get(`/api/dialogue/sessions/user/${userId}`);
-    return response.data;
+    const payload = response.data || {};
+    // Backend returns { user_id, sessions: [...] } — normalize to array of sessions
+    if (!Array.isArray(payload.sessions)) {
+      console.warn('Unexpected getUserSessions payload shape, falling back to empty array', payload);
+    }
+    const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+    return sessions.map((s: any) => ({
+      id: s.session_id ?? s.id,
+      session_name: s.session_name ?? s.session_name,
+      created_at: s.created_at,
+      turn_count: s.turn_count ?? (s.dialogue_turns ? s.dialogue_turns.length : 0),
+      raw: s,
+    }));
   },
 };
 

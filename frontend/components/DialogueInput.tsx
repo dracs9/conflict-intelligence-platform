@@ -5,10 +5,11 @@ import { motion } from 'framer-motion';
 
 interface DialogueInputProps {
   sessionId: number | null;
+  creatingSession?: boolean;
   onAddTurn: (speaker: string, text: string) => void;
 }
 
-export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputProps) {
+export default function DialogueInput({ sessionId, creatingSession = false, onAddTurn }: DialogueInputProps) {
   const [speaker, setSpeaker] = useState<'user' | 'opponent'>('user');
   const [text, setText] = useState('');
   const [realtimeScore, setRealtimeScore] = useState<any>(null);
@@ -104,11 +105,11 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={!sessionId || !text.trim()}
+          disabled={!text.trim() || creatingSession}
           className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
         >
           <Send className="w-4 h-4" />
-          Add to Conversation
+          {creatingSession ? 'Creating session…' : 'Add to Conversation'}
         </button>
       </form>
 

@@ -96,6 +96,27 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+# Better logging for validation errors (helps identify why 422 occurs)
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    try:
+        body = await request.body()
+    except Exception:
+        body = b"<could not read>"
+    logger.warning(
+        "Request validation error: url=%s status=422 errors=%s headers=%s body_len=%s",
+        request.url,
+        exc.errors(),
+        dict(request.headers),
+        len(body) if hasattr(body, "__len__") else "unknown",
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
 # Include routers
 app.include_router(dialogue.router, prefix="/api/dialogue", tags=["Dialogue"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Analysis"])
