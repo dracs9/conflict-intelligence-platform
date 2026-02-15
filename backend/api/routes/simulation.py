@@ -52,7 +52,7 @@ async def simulate_response(
                 "passive_aggression_score": t.passive_aggression_score,
             }
             for t in turns
-            if t.speaker == "opponent"
+            if getattr(t, "speaker") == "opponent"
         ]
 
         opponent_model = simulation_service.build_opponent_model(opponent_turns)

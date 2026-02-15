@@ -27,7 +27,7 @@ async def upload_screenshot(
     Creates a new session with extracted turns
     """
 
-    if not file.content_type.startswith("image/"):
+    if not (file.content_type and file.content_type.startswith("image/")):
         raise HTTPException(status_code=400, detail="File must be an image")
 
     # Read image bytes
@@ -92,7 +92,7 @@ async def upload_screenshot(
 async def extract_text(file: UploadFile = File(...)):
     """Simple text extraction from image"""
 
-    if not file.content_type.startswith("image/"):
+    if not (file.content_type and file.content_type.startswith("image/")):
         raise HTTPException(status_code=400, detail="File must be an image")
 
     image_bytes = await file.read()

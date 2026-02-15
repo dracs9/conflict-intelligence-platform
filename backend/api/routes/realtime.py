@@ -3,7 +3,7 @@ Realtime API Routes - Conflict Thermometer
 """
 
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 from api.deps import get_conflict_analyzer, get_conflict_analyzer_ws
 from database.connection import get_db
@@ -17,7 +17,7 @@ router = APIRouter()
 
 class RealtimeScoreRequest(BaseModel):
     text: str
-    session_id: int = None
+    session_id: Optional[int] = None
 
 
 @router.post("/score")
