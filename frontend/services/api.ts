@@ -4,14 +4,37 @@
  */
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use different base URLs depending on runtime (client vs server)
+const isBrowser = typeof window !== 'undefined';
+const API_URL = isBrowser
+  ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000' // used by client (browser)
+  : process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000'; // used by server-side code (inside Docker)
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
+
+// Helpful interceptor for debugging network / CORS issues in development
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    // surface common network/CORS problems in the console
+    if (error.code === 'ECONNABORTED') {
+      console.error('API timeout:', error.config?.url);
+    } else if (error.response) {
+      console.error('API response error', error.response.status, error.config?.url, error.response.data);
+    } else if (error.request) {
+      console.error('No response received (possible CORS / network issue):', error.config?.url);
+    } else {
+      console.error('API request setup error:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const dialogueApi = {
   createSession: async (userId: string, sessionName?: string) => {
@@ -81,24 +104,18 @@ export const ocrApi = {
   uploadScreenshot: async (userId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const response = await api.post(`/api/ocr/upload-screenshot?user_id=${userId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+
+    // IMPORTANT: do NOT set the multipart Content-Type header manually —
+    // let the browser/axios set the correct boundary.
+    const response = await api.post(`/api/ocr/upload-screenshot?user_id=${userId}`, formData);
     return response.data;
   },
 
   extractText: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const response = await api.post('/api/ocr/extract-text', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+
+    const response = await api.post('/api/ocr/extract-text', formData);
     return response.data;
   },
 };

@@ -2,6 +2,7 @@
 Dialogue API Routes
 """
 
+import logging
 from datetime import datetime
 from typing import List, Optional
 
@@ -12,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.conflict_analyzer import ConflictAnalyzer
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -75,6 +78,15 @@ async def add_turn(
 
     # Get turn count
     turn_count = db.query(DialogueTurn).filter(DialogueTurn.session_id == session_id).count()
+
+    # Log incoming turn for easier debugging
+    logger.info(
+        "Adding turn — session=%s turn_count=%s speaker=%s text_len=%s",
+        session_id,
+        turn_count,
+        request.speaker,
+        len(request.text),
+    )
 
     # Analyze turn
     analysis = conflict_analyzer.analyze_turn(request.text, request.speaker)

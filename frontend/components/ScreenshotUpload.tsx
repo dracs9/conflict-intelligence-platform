@@ -35,17 +35,17 @@ export default function ScreenshotUpload({ userId, onUploadSuccess }: Screenshot
   };
 
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-lg p-6 border border-purple-200">
+    <div className="analysis-card p-6">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-          <ImageIcon className="w-6 h-6 text-purple-600" />
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-700 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-md text-white">
+          <ImageIcon className="w-6 h-6 text-white" />
         </div>
         
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
+          <h3 className="text-lg font-bold text-white mb-2">
             📸 Upload Chat Screenshot
           </h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-300 mb-4">
             Upload a screenshot of your conversation and we'll extract and analyze it automatically
           </p>
 
@@ -57,18 +57,18 @@ export default function ScreenshotUpload({ userId, onUploadSuccess }: Screenshot
               disabled={uploading}
               className="hidden"
             />
-            <div className={`flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all ${
+            <div className={`flex items-center justify-center gap-2 px-6 py-3 bg-transparent border-2 border-dashed border-purple-600 rounded-lg hover:border-purple-400 hover:bg-white/5 text-gray-200 ${
               uploading ? 'opacity-50 cursor-not-allowed' : ''
             }`}>
               {uploading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600" />
-                  <span className="font-medium text-gray-700">Processing...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  <span className="font-medium text-gray-200">Processing...</span>
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4 text-purple-600" />
-                  <span className="font-medium text-gray-700">Choose Image</span>
+                  <Upload className="w-4 h-4 text-white" />
+                  <span className="font-medium text-gray-200">Choose Image</span>
                 </>
               )}
             </div>
@@ -78,7 +78,7 @@ export default function ScreenshotUpload({ userId, onUploadSuccess }: Screenshot
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
+              className="mt-3 p-3 bg-red-900/30 border border-red-700 rounded-lg text-sm text-red-300"
             >
               {error}
             </motion.div>

@@ -42,6 +42,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://cip_user:cip_password@postgres:5432/conflict_intelligence
       REDIS_URL: redis://redis:6379/0
+      # Allow the frontend dev server running on localhost:3000 (and 127.0.0.1)
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      LOG_LEVEL: "INFO"
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,7 +63,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      # Value used by client (browser) — must be reachable from the host browser
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      # Internal URL used by server-side code inside the container (if needed)
+      API_INTERNAL_URL: http://backend:8000
     depends_on:
       - backend
     volumes:

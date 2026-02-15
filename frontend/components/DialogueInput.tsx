@@ -41,8 +41,8 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">💬 Enter Dialogue</h2>
+    <div className="analysis-card">
+      <h2 className="text-xl font-bold text-white mb-4">💬 Enter Dialogue</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Speaker Selection */}
@@ -53,7 +53,7 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
               speaker === 'user'
                 ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-800 text-gray-200 hover:bg-gray-700'
             }`}
           >
             <User className="w-4 h-4" />
@@ -65,7 +65,7 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
               speaker === 'opponent'
                 ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-800 text-gray-200 hover:bg-gray-700'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -80,7 +80,7 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
             onChange={(e) => setText(e.target.value)}
             placeholder={`Enter ${speaker === 'user' ? 'your' : "other person's"} message...`}
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 bg-transparent text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
           
           {/* Real-time Score Indicator */}
@@ -90,10 +90,10 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
               animate={{ opacity: 1, y: 0 }}
               className={`absolute bottom-2 right-2 px-3 py-1 rounded-full text-xs font-medium ${
                 realtimeScore.color === 'green'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-green-900/30 text-green-300'
                   : realtimeScore.color === 'yellow'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
+                  ? 'bg-yellow-900/30 text-yellow-300'
+                  : 'bg-red-900/30 text-red-300'
               }`}
             >
               {realtimeScore.quick_tip}
@@ -105,7 +105,7 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
         <button
           type="submit"
           disabled={!sessionId || !text.trim()}
-          className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
         >
           <Send className="w-4 h-4" />
           Add to Conversation
@@ -115,17 +115,17 @@ export default function DialogueInput({ sessionId, onAddTurn }: DialogueInputPro
       {/* Real-time Metrics */}
       {realtimeScore && (
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="bg-gray-50 rounded p-2 text-center">
-            <div className="text-xs text-gray-600">Conflict</div>
-            <div className="text-sm font-bold">{(realtimeScore.conflict_score * 100).toFixed(0)}%</div>
+          <div className="bg-black/20 rounded p-2 text-center">
+            <div className="text-xs text-gray-400">Conflict</div>
+            <div className="text-sm font-bold text-gray-100">{(realtimeScore.conflict_score * 100).toFixed(0)}%</div>
           </div>
-          <div className="bg-gray-50 rounded p-2 text-center">
-            <div className="text-xs text-gray-600">Aggression</div>
-            <div className="text-sm font-bold">{(realtimeScore.aggression_score * 100).toFixed(0)}%</div>
+          <div className="bg-black/20 rounded p-2 text-center">
+            <div className="text-xs text-gray-400">Aggression</div>
+            <div className="text-sm font-bold text-gray-100">{(realtimeScore.aggression_score * 100).toFixed(0)}%</div>
           </div>
-          <div className="bg-gray-50 rounded p-2 text-center">
-            <div className="text-xs text-gray-600">Passive</div>
-            <div className="text-sm font-bold">{(realtimeScore.passive_aggression_score * 100).toFixed(0)}%</div>
+          <div className="bg-black/20 rounded p-2 text-center">
+            <div className="text-xs text-gray-400">Passive</div>
+            <div className="text-sm font-bold text-gray-100">{(realtimeScore.passive_aggression_score * 100).toFixed(0)}%</div>
           </div>
         </div>
       )}

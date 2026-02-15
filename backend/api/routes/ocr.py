@@ -2,6 +2,8 @@
 OCR API Routes
 """
 
+import logging
+
 from api.deps import get_conflict_analyzer
 from database.connection import get_db
 from database.models import ConflictSession, DialogueTurn
@@ -10,6 +12,7 @@ from services.conflict_analyzer import ConflictAnalyzer
 from services.ocr_service import OCRService
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 ocr_service = OCRService()
@@ -33,10 +36,18 @@ async def upload_screenshot(
     # Read image bytes
     image_bytes = await file.read()
 
+    logger.info(
+        "OCR upload received — user_id=%s filename=%s size=%s",
+        user_id,
+        file.filename,
+        len(image_bytes),
+    )
+
     # Process with OCR
     try:
         extracted_turns = ocr_service.process_chat_screenshot(image_bytes)
     except Exception as e:
+        logger.exception("OCR processing failed")
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
 
     if not extracted_turns:

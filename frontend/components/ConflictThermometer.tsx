@@ -32,19 +32,19 @@ export default function ConflictThermometer({
   const warning = getWarningLevel();
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+    <div className="analysis-card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
           🌡️ Conflict Thermometer
           {getTrendIcon()}
         </h2>
         <span
           className={`px-3 py-1 rounded-full text-sm font-medium ${
             warning.color === 'green'
-              ? 'bg-green-100 text-green-800'
+              ? 'bg-green-900/25 text-green-300'
               : warning.color === 'yellow'
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-red-100 text-red-800'
+              ? 'bg-yellow-900/25 text-yellow-300'
+              : 'bg-red-900/25 text-red-300'
           }`}
         >
           {warning.label}
@@ -52,8 +52,8 @@ export default function ConflictThermometer({
       </div>
 
       {/* Thermometer Bar */}
-      <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden">
-        <div className="absolute inset-0 thermometer-gradient opacity-30" />
+      <div className="relative h-8 bg-gray-900/40 rounded-full overflow-hidden">
+        <div className="absolute inset-0 thermometer-gradient opacity-35" />
         <motion.div
           className={`absolute left-0 top-0 h-full ${
             warning.color === 'green'
@@ -67,7 +67,7 @@ export default function ConflictThermometer({
           transition={{ duration: 0.5 }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-bold text-gray-900">
+          <span className="text-sm font-bold text-white">
             {(conflictScore * 100).toFixed(0)}%
           </span>
         </div>
@@ -75,26 +75,26 @@ export default function ConflictThermometer({
 
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="text-sm text-gray-600">Conflict Intensity</div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
+        <div className="bg-black/20 rounded-lg p-4">
+          <div className="text-sm text-gray-400">Conflict Intensity</div>
+          <div className="text-2xl font-bold text-white mt-1">
             {(conflictScore * 100).toFixed(0)}%
           </div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="text-sm text-gray-600 flex items-center gap-1">
+        <div className="bg-black/20 rounded-lg p-4">
+          <div className="text-sm text-gray-400 flex items-center gap-1">
             <AlertTriangle className="w-4 h-4" />
             Escalation Risk
           </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
+          <div className="text-2xl font-bold text-white mt-1">
             {(escalationProbability * 100).toFixed(0)}%
           </div>
         </div>
       </div>
 
       {/* Trend */}
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-        <div className="text-sm text-blue-800">
+      <div className="mt-4 p-3 bg-blue-900/20 rounded-lg">
+        <div className="text-sm text-blue-200">
           <strong>Trend:</strong> {trend === 'escalating' ? 'Escalating ⬆️' : trend === 'de-escalating' ? 'De-escalating ⬇️' : 'Stable ➡️'}
         </div>
       </div>

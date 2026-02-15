@@ -52,6 +52,12 @@ async def analyze_session(
     ]
 
     # Perform analysis
+    # Log to help debugging long-running analysis operations
+    import logging
+
+    logging.getLogger(__name__).info(
+        "Starting analysis — session_id=%s turns=%s", session_id, len(turn_data)
+    )
     analysis_result = conflict_analyzer.analyze_conversation(turn_data)
 
     # Save analysis

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
+import { motion } from 'framer-motion';
 import ConflictThermometer from '../components/ConflictThermometer';
 import DialogueInput from '../components/DialogueInput';
 import AnalysisPipeline from '../components/AnalysisPipeline';
 import SimulationPanel from '../components/SimulationPanel';
 import ScreenshotUpload from '../components/ScreenshotUpload';
-import { dialogueApi, analysisApi } from '../services/api';
+import { dialogueApi, analysisApi, profileApi, ocrApi } from '../services/api';
 
 export default function Home() {
   const [userId] = useState('demo-user-001');
@@ -14,8 +15,19 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'input' | 'analysis' | 'simulation'>('input');
 
+  // UI state for new template
+  const [chats, setChats] = useState<any[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [profileData, setProfileData] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     initializeSession();
+    loadChats();
   }, []);
 
   const initializeSession = async () => {
@@ -24,6 +36,16 @@ export default function Home() {
       setSessionId(session.session_id);
     } catch (error) {
       console.error('Failed to create session:', error);
+    }
+  };
+
+  const loadChats = async () => {
+    try {
+      const resp = await dialogueApi.getUserSessions(userId);
+      setChats(resp || []);
+    } catch (err) {
+      console.warn('No chats or failed to load chats', err);
+      setChats([]);
     }
   };
 
@@ -51,120 +73,303 @@ export default function Home() {
     setAnalysis(analysisResult);
   };
 
+  const createNewChat = async () => {
+    try {
+      const s = await dialogueApi.createSession(userId, `Новый чат ${new Date().toLocaleTimeString()}`);
+      await loadChats();
+      setSessionId(s.session_id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openProfile = async () => {
+    setShowProfile(true);
+    try {
+      const p = await profileApi.getUserProfile(userId);
+      setProfileData(p);
+    } catch (err) {
+      console.warn('Failed to load profile', err);
+    }
+  };
+
+  const handleAnalyzeNow = async () => {
+    if (!sessionId) return;
+    setAnalyzing(true);
+    try {
+      const a = await analysisApi.analyzeSession(sessionId);
+      setAnalysis(a);
+    } catch (err) {
+      console.error('Analyze failed', err);
+    } finally {
+      setTimeout(() => setAnalyzing(false), 800);
+    }
+  };
+
+  // Attach modal/file input handling (was missing)
+  const handleAttachClick = (type: 'image' | 'audio' | 'document') => {
+    if (!fileInputRef.current) return;
+    if (type === 'image') fileInputRef.current.accept = 'image/*';
+    else if (type === 'audio') fileInputRef.current.accept = 'audio/*';
+    else fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
+    fileInputRef.current.click();
+    setShowAttach(false);
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Only image upload is currently supported via OCR endpoint
+    if (!file.type.startsWith('image/')) {
+      // TODO: support other attachment uploads
+      return;
+    }
+
+    try {
+      const res = await ocrApi.uploadScreenshot(userId, file);
+      if (res?.session_id) {
+        handleScreenshotUpload(res.session_id);
+        await loadChats();
+      }
+    } catch (err) {
+      console.error('Attach upload failed', err);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <>
       <Head>
-        <title>Conflict Intelligence Platform</title>
-        <meta name="description" content="AI-powered conflict analysis and mediation" />
+        <title>Conflict Translator — Conflict Intelligence Platform</title>
+        <meta name="description" content="AI mediator for human communication" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  🔥 Conflict Intelligence Platform
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  AI-powered conflict analysis and mediation system
-                </p>
+      <div>
+        {/* Sidebar */}
+        <div className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
+          <div className="sidebar-header">
+            <button id="profileBtn" className="profile-btn" onClick={openProfile}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>Профиль</span>
+            </button>
+
+            <button id="authBtn" className="auth-btn" onClick={() => setShowAuth(true)}>
+              {showAuth ? 'Закрыть' : 'Войти / Регистрация'}
+            </button>
+
+            <button id="newChatBtn" className="new-chat-btn" onClick={createNewChat}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Новый чат
+            </button>
+          </div>
+
+          <div className="chats-list">
+            {chats.length === 0 && <p className="text-center text-gray-400 py-4">Нет чатов</p>}
+            {chats.map((c: any) => (
+              <div key={c.id} className={`chat-item ${sessionId === c.id ? 'active' : ''}`} onClick={async () => {
+                setSessionId(c.id);
+                const turnsData = await dialogueApi.getTurns(c.id);
+                setTurns(turnsData.turns || []);
+                const a = await analysisApi.analyzeSession(c.id);
+                setAnalysis(a);
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>{c.session_name || c.title || `Chat ${c.id}`}</span>
               </div>
-              {sessionId && (
-                <div className="text-sm text-gray-500">
-                  Session #{sessionId}
+            ))}
+          </div>
+        </div>
+
+        {/* Profile modal */}
+        <div id="profileModal" className={`modal ${showProfile ? '' : 'hidden'}`} onClick={(e) => { if (e.target === e.currentTarget) setShowProfile(false); }}>
+          <div className="modal-content">
+            <button className="close-modal" onClick={() => setShowProfile(false)}>✕</button>
+            <div className="profile-header">
+              <div className="profile-avatar">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <h2 className="profile-title">{profileData?.user_id ?? 'Ваш Профиль'}</h2>
+            </div>
+
+            <div className="profile-section">
+              <h3 className="profile-section-title">🧠 Анализ личности</h3>
+              <div className="profile-traits">
+                <div className="trait-item">
+                  <span className="trait-label">Коммуникативный стиль</span>
+                  <span className="trait-value">{profileData?.dominant_style ?? '—'}</span>
                 </div>
-              )}
+                <div className="trait-item">
+                  <span className="trait-label">Реакция на конфликт</span>
+                  <span className="trait-value">{profileData?.escalation_contribution ? 'Склонность к эскалации' : 'Стабильный'}</span>
+                </div>
+                <div className="trait-item">
+                  <span className="trait-label">Эмоциональный интеллект</span>
+                  <span className="trait-value">{profileData?.style_distribution ? 'Высокий' : 'Средний'}</span>
+                </div>
+                <div className="trait-item">
+                  <span className="trait-label">Доминирующая потребность</span>
+                  <span className="trait-value">{profileData?.dominant_style ?? 'Понимание'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="profile-section">
+              <h3 className="profile-section-title">🔮 Прогноз и рекомендации</h3>
+              <div className="forecast-content">
+                <p>{(profileData?.conflict_history?.length ? 'Последние сессии проанализированы.' : 'Профиль пока пуст.')} </p>
+                <ul className="forecast-list">
+                  <li>Практиковать асертивность в сложных диалогах</li>
+                  <li>Не бояться выражать свои потребности напрямую</li>
+                  <li>Использовать "Я-сообщения" для снижения эскалации</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="profile-stats">
+              <div className="stat-card">
+                <div className="stat-number">{profileData?.total_conflicts ?? 0}</div>
+                <div className="stat-label">Разрешённых конфликтов</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{Math.round((profileData?.you_statements_percentage || 0) * 100)}%</div>
+                <div className="stat-label">You statements</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{profileData?.conflict_history?.length ?? 0}</div>
+                <div className="stat-label">Сессий</div>
+              </div>
             </div>
           </div>
-        </header>
+        </div>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Tab Navigation */}
-          <div className="mb-6">
-            <nav className="flex space-x-4">
-              {[
-                { id: 'input', label: '📝 Input', icon: '💬' },
-                { id: 'analysis', label: '🔍 Analysis', icon: '📊' },
-                { id: 'simulation', label: '🎭 Simulation', icon: '🤖' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-blue-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {tab.icon} {tab.label}
+        {/* Auth modal (placeholder) */}
+        <div id="authModal" className={`modal ${showAuth ? '' : 'hidden'}`}>
+          <div className="modal-content auth-modal-content">
+            <button className="close-modal" onClick={() => setShowAuth(false)}>✕</button>
+            <h2 className="auth-title">Вход / Регистрация</h2>
+            <p className="text-sm text-gray-400">Встроенная аутентификация не настроена. Используйте демо-профиль.</p>
+          </div>
+        </div>
+
+        {/* Main */}
+        <div className="main-content">
+          <div className="container">
+            <header className="hero">
+              <h1 className="title text-4xl font-extrabold">Conflict Translator</h1>
+              <p className="subtitle text-lg mt-2 text-gray-300">ИИ-медиатор для человеческой коммуникации</p>
+            </header>
+
+            <div className="main-panel">
+              <div className="input-wrapper">
+                <button id="attachBtn" className="attach-btn" title="Прикрепить файл" onClick={() => setShowAttach(true)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
                 </button>
-              ))}
-            </nav>
-          </div>
 
-          {/* Content Area */}
-          <div className="space-y-6">
-            {activeTab === 'input' && (
-              <>
-                <ScreenshotUpload
-                  userId={userId}
-                  onUploadSuccess={handleScreenshotUpload}
-                />
-                
-                <DialogueInput
-                  sessionId={sessionId}
-                  onAddTurn={handleAddTurn}
-                />
+                {/* Use existing DialogueInput and ScreenshotUpload components */}
+                <div style={{ flex: 1 }}>
+                  <ScreenshotUpload userId={userId} onUploadSuccess={handleScreenshotUpload} />
+                  <div className="mt-4">
+                    <DialogueInput sessionId={sessionId} onAddTurn={handleAddTurn} />
+                  </div>
+                </div>
 
-                {analysis && (
-                  <ConflictThermometer
-                    conflictScore={analysis.overall_conflict_score}
-                    escalationProbability={analysis.escalation_probability}
-                    trend={analysis.trend}
-                  />
-                )}
-              </>
-            )}
+                <button id="mobileAnalyzeBtn" className="mobile-analyze-btn" onClick={handleAnalyzeNow}>→</button>
+              </div>
 
-            {activeTab === 'analysis' && sessionId && (
-              <AnalysisPipeline sessionId={sessionId} />
-            )}
-
-            {activeTab === 'simulation' && sessionId && (
-              <SimulationPanel sessionId={sessionId} />
-            )}
-          </div>
-
-          {/* Metrics Dashboard */}
-          {analysis && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <MetricCard
-                label="Conflict Score"
-                value={`${(analysis.overall_conflict_score * 100).toFixed(0)}%`}
-                color={getColorForScore(analysis.overall_conflict_score)}
-              />
-              <MetricCard
-                label="Escalation Risk"
-                value={`${(analysis.escalation_probability * 100).toFixed(0)}%`}
-                color={getColorForScore(analysis.escalation_probability)}
-              />
-              <MetricCard
-                label="Passive Aggression"
-                value={`${(analysis.passive_aggression_index * 100).toFixed(0)}%`}
-                color="yellow"
-              />
-              <MetricCard
-                label="Cognitive Biases"
-                value={analysis.cognitive_biases?.length || 0}
-                color="purple"
-              />
+              <button id="analyzeBtn" className="analyze-btn" onClick={handleAnalyzeNow} disabled={!sessionId || analyzing}>
+                <span className="btn-text">Анализировать</span>
+                {analyzing ? (
+                  <span className="loader">
+                    <span className="dot" /> <span className="dot" /> <span className="dot" />
+                  </span>
+                ) : null}
+              </button>
             </div>
-          )}
-        </main>
+
+            <div id="attachModal" className={`attach-modal ${showAttach ? '' : 'hidden'}`}>
+              <div className="attach-modal-content">
+                <button className="attach-option" data-type="image" onClick={() => handleAttachClick('image')}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  Фото/Изображение
+                </button>
+                <button className="attach-option" data-type="audio" onClick={() => handleAttachClick('audio')}>
+                  Аудио
+                </button>
+                <button className="attach-option" data-type="document" onClick={() => handleAttachClick('document')}>
+                  Документ
+                </button>
+              </div>
+            </div>
+
+            {/* Results */}
+            <motion.div id="resultsSection" initial={{ opacity: 0, y: 10 }} animate={analysis ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }} transition={{ duration: 0.33 }} className={`results-section ${analysis ? '' : 'hidden'}`}>
+              <div className="analysis-card">
+                <h3 className="section-title">🧠 Emotion Analysis</h3>
+                <div className="analysis-grid">
+                  <div className="analysis-item">
+                    <span className="label">Emotion</span>
+                    <span className="value" id="emotionValue">{analysis?.nvc_analysis?.emotion ?? analysis?.nvc_analysis?.dominant_emotion ?? '—'}</span>
+                  </div>
+                  <div className="analysis-item">
+                    <span className="label">Hidden Need</span>
+                    <span className="value" id="needValue">{analysis?.nvc_analysis?.likely_need ?? '—'}</span>
+                  </div>
+                  <div className="analysis-item">
+                    <span className="label">Escalation %</span>
+                    <span className="value" id="escalationValue">{Math.round((analysis?.escalation_probability || 0) * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="escalation-card">
+                <h3 className="section-title">🔥 Escalation Meter</h3>
+                <div className="progress-container">
+                  <div id="progressBar" className={`progress-bar ${((analysis?.escalation_probability || 0) * 100) < 30 ? 'low' : ((analysis?.escalation_probability || 0) * 100) < 60 ? 'medium' : 'high'}`} style={{ width: `${Math.round((analysis?.escalation_probability || 0) * 100)}%` }} />
+                </div>
+              </div>
+
+              <div className="responses-grid">
+                <div className="response-card">
+                  <h4 className="response-title">💙 Эмпатичный</h4>
+                  <p className="response-text" id="empathetic">{analysis?.recommendations?.[0]?.description ?? 'Я понимаю, что для тебя это важно...'}</p>
+                  <button className="copy-btn" onClick={() => navigator.clipboard.writeText((analysis?.recommendations?.[0]?.description ?? ''))}>Скопировать</button>
+                </div>
+                <div className="response-card">
+                  <h4 className="response-title">🧠 Рациональный</h4>
+                  <p className="response-text" id="rational">{analysis?.recommendations?.[1]?.description ?? 'Давай обсудим факты и найдём решение.'}</p>
+                  <button className="copy-btn" onClick={() => navigator.clipboard.writeText((analysis?.recommendations?.[1]?.description ?? ''))}>Скопировать</button>
+                </div>
+                <div className="response-card">
+                  <h4 className="response-title">❓ Сократовский</h4>
+                  <p className="response-text" id="socratic">{analysis?.recommendations?.[2]?.description ?? 'Что именно тебя больше всего беспокоит?'}</p>
+                  <button className="copy-btn" onClick={() => navigator.clipboard.writeText((analysis?.recommendations?.[2]?.description ?? ''))}>Скопировать</button>
+                </div>
+              </div>
+            </motion.div>
+
+            <input ref={fileInputRef} type="file" id="fileInput" className="hidden" onChange={handleFileInputChange} />
+          </div>
+        </div>
       </div>
     </>
   );

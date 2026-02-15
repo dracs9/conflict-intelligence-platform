@@ -15,6 +15,7 @@ from fastapi import (
     FastAPI,
     File,
     HTTPException,
+    Request,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
@@ -62,14 +63,38 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration
+import logging
+import os
+
+# simple logging config (can be controlled with LOG_LEVEL env)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger("cip")
+
+# CORS configuration — read from CORS_ORIGINS (comma-separated) for dev/prod flexibility
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+if cors_origins_env.strip() == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Lightweight request logger to help capture CORS / 5xx issues
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"→ {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"← {request.method} {request.url} - {response.status_code}")
+    return response
+
 
 # Include routers
 app.include_router(dialogue.router, prefix="/api/dialogue", tags=["Dialogue"])
@@ -99,6 +124,14 @@ async def health_check():
         "conflict_analyzer": conflict_analyzer is not None,
         "database": "connected",
     }
+
+
+@app.get("/ready")
+async def readiness_probe():
+    """Readiness probe — returns 503 until ML models & analyzer initialized"""
+    if ml_service is None or conflict_analyzer is None:
+        raise HTTPException(status_code=503, detail="Service not ready")
+    return {"status": "ready"}
 
 
 if __name__ == "__main__":

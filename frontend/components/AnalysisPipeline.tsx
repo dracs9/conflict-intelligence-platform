@@ -28,25 +28,25 @@ export default function AnalysisPipeline({ sessionId }: AnalysisPipelineProps) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+      <div className="analysis-card p-8 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Analyzing conversation...</p>
+        <p className="mt-4 text-gray-300">Analyzing conversation...</p>
       </div>
     );
   }
 
   if (!pipeline) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-        <p className="text-gray-600">No analysis available</p>
+      <div className="analysis-card p-8 text-center">
+        <p className="text-gray-300">No analysis available</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">📊 Analysis Pipeline</h2>
+      <div className="analysis-card p-6">
+        <h2 className="text-2xl font-bold text-white mb-6">📊 Analysis Pipeline</h2>
 
         {pipeline.pipeline.map((turn: any, idx: number) => (
           <motion.div
@@ -57,14 +57,12 @@ export default function AnalysisPipeline({ sessionId }: AnalysisPipelineProps) {
             className="mb-8 last:mb-0"
           >
             <div className="flex items-center gap-2 mb-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                turn.speaker === 'user'
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-purple-100 text-purple-800'
+              <span className={`px-3 py-1 rounded-full text-sm font-medium border border-white/10 ${
+                turn.speaker === 'user' ? 'text-blue-300' : 'text-purple-300'
               }`}>
                 {turn.speaker === 'user' ? '👤 You' : '👥 Other'}
               </span>
-              <span className="text-gray-500 text-sm">Turn {turn.turn_id + 1}</span>
+              <span className="text-gray-400 text-sm">Turn {turn.turn_id + 1}</span>
             </div>
 
             <div className="flex items-start gap-4 overflow-x-auto pb-4">
@@ -72,7 +70,7 @@ export default function AnalysisPipeline({ sessionId }: AnalysisPipelineProps) {
                 <div key={stageIdx} className="flex items-center gap-4 min-w-fit">
                   <PipelineStage stage={stage} />
                   {stageIdx < turn.stages.length - 1 && (
-                    <ArrowRight className="w-6 h-6 text-gray-400 flex-shrink-0" />
+                    <ArrowRight className="w-6 h-6 text-white/40 flex-shrink-0" />
                   )}
                 </div>
               ))}
@@ -83,8 +81,8 @@ export default function AnalysisPipeline({ sessionId }: AnalysisPipelineProps) {
 
       {/* Recommendations */}
       {pipeline.recommendations && pipeline.recommendations.length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="analysis-card p-6">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
             💡 Recommendations
           </h3>
           <div className="space-y-3">
@@ -93,17 +91,17 @@ export default function AnalysisPipeline({ sessionId }: AnalysisPipelineProps) {
                 key={idx}
                 className={`p-4 rounded-lg border-l-4 ${
                   rec.priority === 'high'
-                    ? 'bg-red-50 border-red-500'
+                    ? 'bg-red-900/20 border-red-500/40 text-red-300'
                     : rec.priority === 'medium'
-                    ? 'bg-yellow-50 border-yellow-500'
+                    ? 'bg-yellow-900/20 border-yellow-500/40 text-yellow-300'
                     : rec.priority === 'critical'
-                    ? 'bg-purple-50 border-purple-500'
-                    : 'bg-green-50 border-green-500'
+                    ? 'bg-purple-900/20 border-purple-500/40 text-purple-300'
+                    : 'bg-green-900/20 border-green-500/40 text-green-300'
                 }`}
               >
-                <div className="font-medium text-gray-900">{rec.action}</div>
-                <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="font-medium text-white">{rec.action}</div>
+                <div className="text-sm text-gray-300 mt-1">{rec.description}</div>
+                <div className="text-xs text-gray-400 mt-1">
                   {rec.category} · {rec.priority} priority
                 </div>
               </div>
@@ -134,13 +132,13 @@ function PipelineStage({ stage }: { stage: any }) {
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-4 min-w-[200px] max-w-[250px]">
+    <div className="analysis-item min-w-[200px] max-w-[250px]">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{getIcon()}</span>
-        <div className="font-medium text-gray-900 text-sm">{stage.label}</div>
+        <div className="font-medium text-white text-sm">{stage.label}</div>
       </div>
       
-      <div className="text-xs text-gray-700 break-words">
+      <div className="text-xs text-gray-300 break-words">
         {typeof stage.content === 'string' ? (
           <div className="line-clamp-3">{stage.content}</div>
         ) : typeof stage.content === 'object' && stage.content !== null ? (

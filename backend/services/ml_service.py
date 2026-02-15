@@ -3,13 +3,17 @@ ML Service - Core Intelligence Engine
 Handles all ML model loading and inference
 """
 
+import logging
 import re
+import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import spacy
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+
+logger = logging.getLogger(__name__)
 
 
 class MLService:
@@ -22,38 +26,76 @@ class MLService:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     async def initialize(self):
-        """Initialize all ML models"""
-        print(f"🔧 Loading models on device: {self.device}")
+        """Initialize all ML models with retries and better diagnostics"""
+        logger.info(f"🔧 Loading models on device: {self.device}")
 
-        # Load sentiment analysis
-        print("Loading sentiment analyzer...")
-        self.sentiment_analyzer = pipeline(
+        def with_retries(fn, *args, retries: int = 3, backoff: int = 2, **kwargs):
+            last_exc = None
+            for attempt in range(1, retries + 1):
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    wait = backoff**attempt
+                    logger.warning(
+                        "Model load failed (attempt %s/%s): %s — retrying in %ss",
+                        attempt,
+                        retries,
+                        str(exc),
+                        wait,
+                    )
+                    time.sleep(wait)
+            raise RuntimeError(f"Failed to load model after {retries} attempts: {last_exc}")
+
+        # Load sentiment analyzer (retry on transient network / HF issues)
+        logger.info("Loading sentiment analyzer...")
+        self.sentiment_analyzer = with_retries(
+            pipeline,
             "sentiment-analysis",
             model="distilbert-base-uncased-finetuned-sst-2-english",
             device=0 if self.device == "cuda" else -1,
+            retries=3,
         )
 
-        # Load emotion detection (for aggression/passive aggression)
-        print("Loading emotion analyzer...")
-        self.emotion_analyzer = pipeline(
+        # Load emotion analyzer
+        logger.info("Loading emotion analyzer...")
+        self.emotion_analyzer = with_retries(
+            pipeline,
             "text-classification",
             model="j-hartmann/emotion-english-distilroberta-base",
             device=0 if self.device == "cuda" else -1,
             top_k=None,
+            retries=3,
         )
 
-        # Load spaCy for linguistic analysis
-        print("Loading spaCy...")
-        try:
-            self.nlp = spacy.load("en_core_web_sm")
-        except:
-            print("Downloading spaCy model...")
-            import subprocess
+        # Load spaCy model (install if missing)
+        logger.info("Loading spaCy...")
+        for attempt in range(1, 4):
+            try:
+                self.nlp = spacy.load("en_core_web_sm")
+                break
+            except Exception as exc:
+                logger.warning("spaCy model load failed (attempt %s/3): %s", attempt, exc)
+                try:
+                    import subprocess
 
-            subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-            self.nlp = spacy.load("en_core_web_sm")
+                    subprocess.run(
+                        [
+                            "python",
+                            "-m",
+                            "spacy",
+                            "download",
+                            "en_core_web_sm",
+                        ],
+                        check=False,
+                    )
+                except Exception as e:
+                    logger.warning("spaCy download attempt raised: %s", e)
+                time.sleep(1 * attempt)
+        if self.nlp is None:
+            raise RuntimeError("Failed to load spaCy model en_core_web_sm")
 
-        print("✅ All models loaded")
+        logger.info("✅ All models loaded")
 
     def analyze_sentiment(self, text: str) -> Dict:
         """Analyze sentiment of text"""

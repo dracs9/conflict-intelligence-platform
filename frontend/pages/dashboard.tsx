@@ -26,10 +26,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your profile...</p>
+          <p className="mt-4 text-gray-300">Loading your profile...</p>
         </div>
       </div>
     );
@@ -37,8 +37,8 @@ export default function Dashboard() {
 
   if (!dashboard) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <p className="text-gray-600">No profile data available</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-300">No profile data available</p>
       </div>
     );
   }
@@ -50,11 +50,11 @@ export default function Dashboard() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">📊 Your Conflict Profile</h1>
-          <p className="text-gray-600 mt-2">Track your communication patterns and improvement over time</p>
+          <h1 className="text-3xl font-bold text-white">📊 Your Conflict Profile</h1>
+          <p className="text-gray-300 mt-2">Track your communication patterns and improvement over time</p>
         </div>
 
         {/* Key Metrics */}
@@ -90,9 +90,9 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-lg p-6 border border-gray-200"
+            className="analysis-card p-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Communication Style Profile</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Communication Style Profile</h2>
             <ResponsiveContainer width="100%" height={300}>
               <RadarChart data={styleData}>
                 <PolarGrid />
@@ -108,9 +108,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-6 border border-gray-200"
+            className="analysis-card p-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Conflict Score History</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Conflict Score History</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={profile.conflict_history.slice(-10)}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -129,22 +129,22 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-6 bg-white rounded-xl shadow-lg p-6 border border-gray-200"
+            className="mt-6 analysis-card p-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-4">💡 Personalized Insights</h2>
+            <h2 className="text-xl font-bold text-white mb-4">💡 Personalized Insights</h2>
             <div className="space-y-3">
               {dashboard.insights.map((insight: any, idx: number) => (
                 <div
                   key={idx}
                   className={`p-4 rounded-lg border-l-4 ${
                     insight.type === 'positive'
-                      ? 'bg-green-50 border-green-500'
+                      ? 'bg-green-900/20 border-green-500/40 text-green-300'
                       : insight.type === 'warning'
-                      ? 'bg-red-50 border-red-500'
-                      : 'bg-blue-50 border-blue-500'
+                      ? 'bg-red-900/20 border-red-500/40 text-red-300'
+                      : 'bg-blue-900/20 border-blue-500/40 text-blue-300'
                   }`}
                 >
-                  <p className="text-gray-900">{insight.message}</p>
+                  <p className="text-gray-300">{insight.message}</p>
                 </div>
               ))}
             </div>
@@ -157,17 +157,17 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-6 bg-white rounded-xl shadow-lg p-6 border border-gray-200"
+            className="mt-6 analysis-card p-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Sessions</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Recent Sessions</h2>
             <div className="space-y-2">
               {dashboard.recent_sessions.map((session: any) => (
-                <div key={session.session_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={session.session_id} className="flex items-center justify-between p-3 chat-item rounded-lg">
                   <div>
-                    <div className="font-medium text-gray-900">{session.session_name}</div>
-                    <div className="text-sm text-gray-500">{session.turn_count} turns</div>
+                    <div className="font-medium text-white">{session.session_name}</div>
+                    <div className="text-sm text-gray-400">{session.turn_count} turns</div>
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-400">
                     {new Date(session.created_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -181,20 +181,13 @@ export default function Dashboard() {
 }
 
 function MetricCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
-  const colorClasses = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-700',
-    green: 'bg-green-50 border-green-200 text-green-700',
-    red: 'bg-red-50 border-red-200 text-red-700',
-    purple: 'bg-purple-50 border-purple-200 text-purple-700',
-  };
-
   return (
-    <div className={`p-6 rounded-xl border-2 ${colorClasses[color] || colorClasses.blue}`}>
+    <div className="stat-card">
       <div className="flex items-center gap-3 mb-2">
         {icon}
-        <div className="text-sm font-medium opacity-80">{label}</div>
+        <div className="text-sm font-medium opacity-80 text-white/80">{label}</div>
       </div>
-      <div className="text-3xl font-bold mt-2">{value}</div>
+      <div className="text-3xl font-bold mt-2 text-white">{value}</div>
     </div>
   );
 }
