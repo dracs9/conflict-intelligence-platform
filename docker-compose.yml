@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cip_user"]
+      test: ["CMD-SHELL", "pg_isready -U cip_user -d conflict_intelligence"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://cip_user:cip_password@postgres:5432/conflict_intelligence
+      DATABASE_URL: postgresql+psycopg2://cip_user:cip_password@postgres:5432/conflict_intelligence
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
@@ -60,7 +60,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://backend:8000
     depends_on:
       - backend
     volumes:
@@ -68,5 +68,9 @@ services:
       - /app/node_modules
     command: npm run dev
 
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
+

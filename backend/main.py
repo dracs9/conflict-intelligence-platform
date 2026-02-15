@@ -2,49 +2,64 @@
 Conflict Intelligence Platform - Main Application
 A production-grade conflict analysis and mediation system
 """
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import uvicorn
-from typing import List, Optional
-import json
 
-from api.routes import dialogue, analysis, simulation, profile, ocr, realtime
-from database.connection import engine, Base, get_db
-from services.ml_service import MLService
+import json
+from contextlib import asynccontextmanager
+from typing import List, Optional
+
+import uvicorn
+from api.routes import analysis, dialogue, ocr, profile, realtime, simulation
+from database.connection import Base, engine, get_db
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.middleware.cors import CORSMiddleware
 from services.conflict_analyzer import ConflictAnalyzer
+from services.ml_service import MLService
 
 # Initialize ML models on startup
 ml_service = None
 conflict_analyzer = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle management for ML models"""
     global ml_service, conflict_analyzer
-    
+
     print("🚀 Initializing ML models...")
     ml_service = MLService()
     await ml_service.initialize()
-    
+
     conflict_analyzer = ConflictAnalyzer(ml_service)
-    
+
+    # Expose services on app.state to avoid circular imports from route modules
+    app.state.ml_service = ml_service
+    app.state.conflict_analyzer = conflict_analyzer
+
     print("✅ ML models loaded successfully")
-    
+
     # Create database tables
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized")
-    
+
     yield
-    
+
     print("🔄 Shutting down...")
+
 
 # Initialize FastAPI app
 app = FastAPI(
     title="Conflict Intelligence Platform",
     description="AI-powered conflict analysis and mediation system",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS configuration
@@ -64,14 +79,16 @@ app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
 app.include_router(realtime.router, prefix="/api/realtime", tags=["Realtime"])
 
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
     return {
         "status": "operational",
         "service": "Conflict Intelligence Platform",
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
+
 
 @app.get("/health")
 async def health_check():
@@ -80,14 +97,9 @@ async def health_check():
         "status": "healthy",
         "ml_service": ml_service is not None,
         "conflict_analyzer": conflict_analyzer is not None,
-        "database": "connected"
+        "database": "connected",
     }
 
+
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
