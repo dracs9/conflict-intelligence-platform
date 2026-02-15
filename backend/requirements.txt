@@ -1,0 +1,33 @@
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+sqlalchemy==2.0.25
+alembic==1.13.1
+psycopg2-binary==2.9.9
+redis==5.0.1
+celery==5.3.6
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+
+# ML & NLP
+transformers==4.36.2
+torch==2.1.2
+spacy==3.7.2
+sentencepiece==0.1.99
+accelerate==0.25.0
+
+# Vision
+pytesseract==0.3.10
+opencv-python==4.9.0.80
+Pillow==10.2.0
+
+# WebSocket
+websockets==12.0
+
+# Utilities
+numpy==1.26.3
+pandas==2.1.4
+scikit-learn==1.4.0
